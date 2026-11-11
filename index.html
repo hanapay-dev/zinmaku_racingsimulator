@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<title>競馬シミュレーター Ver.0.14 画面切替対応</title>
+<style>
+:root{color-scheme:dark;--bg:#101820;--panel:#1b2833;--line:#344553;--accent:#5cc8a1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:#eef4f6;font:14px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:10px 16px;background:#14212b;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+h1{font-size:19px;margin:0}
+main{display:block;max-width:1840px;margin:auto;padding:12px}
+.raceTop{margin-bottom:12px;padding:12px}
+.lowerGrid{display:grid;grid-template-columns:minmax(300px, .95fr) minmax(420px,1.55fr) minmax(245px,.72fr);gap:12px;align-items:start}
+.settingsPanel,.rankingWrap,.statsPanel{min-width:0}
+.rankingWrap .rankingPanel{margin-top:0}
+.rankingWrap #liveRanking{grid-template-columns:repeat(2,minmax(0,1fr))}
+.metricGrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:8px 0}
+.metricCard{background:#101a22;border:1px solid #405360;border-radius:9px;padding:10px;min-width:0}
+.metricCard span{display:block;color:#a9bbc3;font-size:11px}
+.metricCard strong{display:block;font-size:23px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.metricCard:first-child strong{color:#79ddb7}
+
+
+
+
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0;min-height:0}
+.panel h2{font-size:14px;margin:0 0 8px;color:#a9dfcf}
+label{display:block;color:#c7d4db;margin:6px 0 3px;font-size:12px}
+input,select,textarea,button{font:inherit;color:inherit;background:#101a22;border:1px solid #405360;border-radius:7px;padding:7px;width:100%;min-width:0}
+button{cursor:pointer;background:#245b4c;border-color:#367d67;font-weight:650;padding:8px}
+button.secondary{background:#273945;border-color:#455966}
+.row{display:flex;gap:7px;align-items:end;flex-wrap:wrap}.row>*{flex:1;min-width:0}
+.settingsRow select{font-size:12px;padding:7px 5px}
+#horseInputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 7px;border:1px solid var(--line);border-radius:8px;padding:7px;overflow:visible}
+.horseRow{position:relative;display:grid;grid-template-columns:25px minmax(0,1fr) 38px 34px;gap:4px;align-items:center;min-width:0;margin:0;padding:3px 4px;background:#14212b;border:1px solid rgba(164,190,201,.15);border-radius:6px}
+.horseRow>small{font-size:10px;color:#a9b8c1;text-align:center}
+.horseRow input{min-width:0;padding:5px 4px;font-size:11px;height:28px}
+.horseRow .horseFrame{text-align:center}
+.horseRow details{position:static;min-width:0;background:transparent;border-radius:0;padding:0}
+.horseRow summary{cursor:pointer;color:#a9dfcf;font-size:10px;text-align:center;list-style:none;white-space:nowrap;user-select:none}
+.horseRow summary::-webkit-details-marker{display:none}
+.lapEditor{display:none}
+.horseRow details[open] .lapEditor{display:block;position:absolute;z-index:40;top:calc(100% + 4px);left:0;width:86vw;max-width:370px;padding:9px;background:#0d1820;border:1px solid #557080;border-radius:8px;box-shadow:0 10px 28px rgba(0,0,0,.55)}
+.lapEditor .lapInput{margin:0 0 5px;font-size:12px;width:100%;height:auto;padding:7px}
+.lapEditor small{display:block;color:#9fb2bc;font-size:10px}
+.courseProfile{margin:7px 0 8px;padding:7px 9px;font-size:11px;line-height:1.45}
+.note{color:#aabac2;font-size:11px;margin:6px 0}
+.raceControls{margin-top:8px}
+.results{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.chip{background:#263945;padding:4px 8px;border-radius:20px;font-size:11px}
+.profile{background:#14212b;border:1px solid var(--line);border-radius:8px;padding:8px;color:#c5d8df;white-space:pre-line}
+#status{color:#9fe0c9;font-size:12px}
+.raceHeader{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
+.raceHeader h2{margin:0}
+.courseStage{position:relative;width:100%;max-width:calc(56vh * 1.774);margin-left:auto;margin-right:auto;border-radius:10px;overflow:hidden;background:#315f3c}
+#raceCanvas{display:block;width:100%;height:auto;background:#9bb5bd;border-radius:10px}
+#timerHud{position:absolute;z-index:5;top:12px;right:12px;min-width:205px;max-width:34%;padding:9px 12px;background:rgba(7,17,23,.86);border:1px solid rgba(220,238,242,.38);border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.24);pointer-events:none;backdrop-filter:blur(5px)}
+#timerHud .metricLabel{font-size:9px;letter-spacing:.12em;color:#aabdc5}
+#elapsedClock{font-variant-numeric:tabular-nums;font-size:28px;font-weight:850;line-height:1.15;color:#fff;letter-spacing:.02em}
+#distanceClock,#leadClock{display:block;font-size:10px;color:#d7e4e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.rankingPanel{min-width:0;background:rgba(9,20,27,.72);border:1px solid rgba(164,190,201,.32);border-radius:10px;padding:8px 10px;margin-top:8px}
+.rankingHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rankingHead strong{font-size:13px;color:#eef4f6}
+.rankingHead span{color:#aabdc5;font-size:10px;letter-spacing:.08em}
+#liveRanking{list-style:none;padding:0;margin:7px 0 0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 6px}
+.liveRankItem{display:grid;grid-template-columns:19px 26px minmax(0,1fr) auto;align-items:center;gap:5px;min-width:0;padding:3px 5px;border:1px solid rgba(180,205,214,.16);border-radius:6px;background:rgba(255,255,255,.045)}
+.rankIndex{font-size:10px;font-weight:800;color:#d8e5e9;text-align:right;font-variant-numeric:tabular-nums}
+.horseBib{display:inline-flex;justify-content:center;align-items:center;width:24px;height:21px;border-radius:4px;font-size:12px;font-weight:900;font-variant-numeric:tabular-nums;background:var(--bib-bg);color:var(--bib-fg);border:1px solid var(--bib-border)}
+.rankName{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f3f7f8}
+.rankGap{font-size:9px;white-space:nowrap;color:#9fb4bd;font-variant-numeric:tabular-nums}
+.raceMeta{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:7px}
+.legend{display:flex;gap:7px;flex-wrap:wrap;margin:0}.legend span{font-size:10px;color:#d3e0e5}
+#raceInfo{flex:1;min-width:180px;font-size:10px;padding:5px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:1250px){.lowerGrid{grid-template-columns:minmax(280px,.9fr) minmax(360px,1.25fr)}.statsPanel{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}.statsPanel h2{grid-column:1/-1}.statsPanel .metricGrid{grid-column:1}.statsPanel .statsPanel }
+@media(max-width:900px){main{padding:9px}.lowerGrid{grid-template-columns:1fr;max-width:850px;margin:auto}.statsPanel{display:block;grid-column:auto}.statsPanel .courseStage{width:100%}#timerHud{max-width:40%}}
+@media(max-width:520px){header{padding:8px 11px}h1{font-size:16px}main{padding:7px;gap:8px}.panel{padding:9px;border-radius:10px}.settingsRow{gap:5px}.settingsRow select{font-size:11px;padding:7px 3px}#horseInputs{gap:4px;padding:5px}.horseRow{grid-template-columns:21px minmax(0,1fr) 34px 29px;gap:3px;padding:2px}.horseRow input{font-size:10px;height:26px;padding:4px 3px}.horseRow summary{font-size:9px}#timerHud{top:6px;right:6px;min-width:130px;max-width:48%;padding:5px 7px;border-radius:7px}#elapsedClock{font-size:19px}#timerHud .metricLabel{font-size:8px}#distanceClock,#leadClock{font-size:8px;margin-top:1px}#liveRanking{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}.liveRankItem{grid-template-columns:17px 23px minmax(0,1fr) auto;gap:3px;padding:3px}.rankName{font-size:10px}.rankGap{font-size:8px}.horseBib{width:21px;height:19px;font-size:11px}.raceHeader h2{font-size:13px}#raceInfo{font-size:9px;min-width:130px}}
+
+/* Ver.0.11: timer is moved completely outside the course canvas. */
+#timerHud{
+ position:relative;inset:auto;z-index:1;display:flex;align-items:center;justify-content:space-between;
+ gap:10px;width:100%;min-width:0;max-width:none;margin:0 auto 8px;padding:7px 12px;
+ background:rgba(7,17,23,.94);border:1px solid rgba(220,238,242,.32);border-radius:9px;
+ box-shadow:none;pointer-events:none;backdrop-filter:blur(5px)
+}
+.timerMain{display:flex;align-items:center;gap:12px;min-width:0}
+#timerHud .metricLabel{font-size:9px;letter-spacing:.12em;color:#aabdc5;white-space:nowrap}
+#elapsedClock{font-variant-numeric:tabular-nums;font-size:26px;font-weight:850;line-height:1;color:#fff;letter-spacing:.02em;white-space:nowrap}
+.timerSub{display:flex;align-items:center;justify-content:flex-end;gap:5px 14px;flex-wrap:wrap;min-width:0}
+#distanceClock,#leadClock{display:inline-block;max-width:100%;font-size:10px;color:#d7e4e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0}
+.courseStage{position:relative;width:100%;max-width:calc(56vh * 1.774);margin-left:auto;margin-right:auto;border-radius:10px;overflow:hidden;background:#315f3c}
+@media(max-width:900px){#timerHud{max-width:none}}
+@media(max-width:520px){
+ #timerHud{gap:7px;padding:6px 8px;margin-bottom:7px;border-radius:7px}
+ .timerMain{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+ #timerHud .metricLabel{font-size:7px;letter-spacing:.08em}
+ #elapsedClock{font-size:21px}
+ .timerSub{flex-direction:column;align-items:flex-end;justify-content:center;gap:2px;max-width:56%}
+ #distanceClock,#leadClock{font-size:8px;line-height:1.25;text-align:right}
+}
+
+
+/* Ver.0.12: desktop workspace — settings / race view / live ranking */
+.appLayout{
+ display:grid;
+ grid-template-columns:minmax(310px,.92fr) minmax(470px,1.55fr) minmax(275px,.86fr);
+ gap:12px;
+ align-items:start;
+}
+.appLayout>.panel{min-width:0;}
+.settingsPanel{grid-column:1;grid-row:1;}
+.racePanel{grid-column:2;grid-row:1;}
+.rankingWrap{
+ grid-column:3;grid-row:1;
+ position:sticky;top:12px;
+ max-height:calc(100vh - 24px);
+ overflow-y:auto;
+}
+.rankingWrap .rankingPanel{margin:0;}
+.rankingWrap #liveRanking{grid-template-columns:minmax(0,1fr);}
+.racePanel{min-width:0;}
+.raceToolbar{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(220px,.78fr);
+ gap:8px;
+ align-items:stretch;
+ margin:0 0 10px;
+}
+#timerHud{
+ position:relative;inset:auto;z-index:1;
+ display:flex;align-items:center;justify-content:space-between;
+ gap:10px;width:100%;min-width:0;max-width:none;
+ min-height:64px;margin:0;padding:8px 10px;
+ background:rgba(7,17,23,.94);border:1px solid rgba(220,238,242,.32);
+ border-radius:9px;box-shadow:none;pointer-events:none;backdrop-filter:blur(5px);
+}
+.timerMain{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:4px;min-width:0;}
+#timerHud .metricLabel{font-size:9px;letter-spacing:.08em;color:#aabdc5;white-space:normal;}
+#elapsedClock{font-variant-numeric:tabular-nums;font-size:27px;font-weight:850;line-height:1;color:#fff;letter-spacing:.02em;white-space:nowrap;}
+.timerSub{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:0;}
+#distanceClock,#leadClock{display:block;max-width:100%;font-size:10px;line-height:1.35;color:#d7e4e8;white-space:normal;overflow-wrap:anywhere;margin:0;}
+.gapStat{display:flex;align-items:baseline;gap:5px;color:#aabdc5;font-size:10px;}
+.gapStat small{font-size:9px;white-space:nowrap;}
+.gapStat strong{color:#79ddb7;font-size:12px;font-variant-numeric:tabular-nums;}
+.raceControls{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;align-items:stretch;margin:0;
+}
+.raceControls>*{min-width:0;min-height:42px;padding:7px 4px;font-size:12px;line-height:1.25;}
+.courseStage{position:relative;width:100%;max-width:none;margin:0;border-radius:10px;overflow:hidden;background:#315f3c;}
+#raceCanvas{display:block;width:100%;height:auto;background:#9bb5bd;border-radius:10px;}
+.raceMeta{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.raceMeta .legend{flex:0 0 auto;}
+.raceMeta #raceInfo{flex:1;min-width:180px;font-size:10px;white-space:normal;}
+.rankingWrap .rankingPanel{background:rgba(9,20,27,.55);}
+.rankingWrap #liveRanking{gap:5px;}
+.rankingWrap .liveRankItem{grid-template-columns:21px 26px minmax(0,1fr) auto;padding:5px 6px;}
+.rankingWrap .rankName{font-size:12px;}
+.rankingWrap .rankGap{font-size:10px;}
+
+@media(max-width:1250px){
+ .appLayout{grid-template-columns:minmax(270px,.82fr) minmax(360px,1.18fr);}
+ .settingsPanel{grid-column:1;grid-row:1;}
+ .racePanel{grid-column:2;grid-row:1;}
+ .rankingWrap{grid-column:1/-1;grid-row:2;position:static;max-height:none;overflow:visible;}
+ .rankingWrap #liveRanking{grid-template-columns:repeat(3,minmax(0,1fr));}
+ .raceToolbar{grid-template-columns:1fr;}
+ .raceControls>*{min-height:38px;}
+}
+@media(max-width:900px){
+ main{padding:9px;}
+ .appLayout{display:flex;flex-direction:column;max-width:850px;margin:auto;}
+ .racePanel{order:1;width:100%;}
+ .settingsPanel{order:2;width:100%;}
+ .rankingWrap{order:3;width:100%;position:static;max-height:none;overflow:visible;}
+ .raceToolbar{grid-template-columns:minmax(0,1fr) minmax(220px,.85fr);}
+ .rankingWrap #liveRanking{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:600px){
+ .raceToolbar{grid-template-columns:1fr;gap:7px;}
+ #timerHud{min-height:0;gap:8px;padding:7px 9px;}
+ .timerMain{gap:3px;}
+ #elapsedClock{font-size:23px;}
+ .timerSub{gap:2px;}
+ #timerHud .metricLabel{font-size:8px;}
+ #distanceClock,#leadClock{font-size:9px;}
+ .raceControls>*{min-height:39px;font-size:11px;}
+ .rankingWrap #liveRanking{grid-template-columns:repeat(2,minmax(0,1fr));}
+ .raceMeta{display:block;}
+ .raceMeta .legend{margin-bottom:7px;}
+ .raceMeta #raceInfo{min-width:0;}
+}
+
+
+/* Ver.0.13: PCでは3パネルをビューポート高に揃え、左右だけ内部スクロール */
+@media (min-width:901px){
+ html,body{height:100%;min-height:0;}
+ body{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+ header{flex:0 0 auto;}
+ main{flex:1 1 auto;width:100%;height:auto;min-height:0;max-width:1840px;margin:0 auto;padding:12px;overflow:hidden;}
+ .appLayout{height:100%;min-height:0;grid-template-rows:minmax(0,1fr);align-items:stretch;}
+ .appLayout>.panel{height:100%;min-height:0;}
+ .settingsPanel,.rankingWrap{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;}
+ .settingsPanel{grid-column:1;grid-row:1;}
+ .racePanel{grid-column:2;grid-row:1;display:flex;flex-direction:column;overflow:hidden;}
+ .rankingWrap{grid-column:3;grid-row:1;position:static;max-height:none;}
+ .racePanel .raceHeader,.racePanel .raceToolbar,.racePanel .raceMeta{flex:0 0 auto;}
+ .racePanel .courseStage{flex:1 1 auto;min-height:260px;width:100%;height:auto;max-width:none;margin:0;}
+ .racePanel #raceCanvas{display:block;width:100%;height:100%;}
+ .racePanel .raceMeta{max-height:66px;overflow:auto;}
+}
+/* 低めのPC解像度でも3列を維持。狭くなった分は各サイドでスクロール */
+@media (min-width:901px) and (max-width:1250px){
+ .appLayout{grid-template-columns:minmax(220px,.9fr) minmax(330px,1.35fr) minmax(205px,.82fr);grid-template-rows:minmax(0,1fr);}
+ .settingsPanel{grid-column:1;grid-row:1;}
+ .racePanel{grid-column:2;grid-row:1;}
+ .rankingWrap{grid-column:3;grid-row:1;position:static;max-height:none;overflow-x:hidden;overflow-y:auto;}
+ .raceToolbar{grid-template-columns:minmax(0,1fr) minmax(185px,.78fr);}
+ .rankingWrap #liveRanking{grid-template-columns:minmax(0,1fr);}
+}
+/* スマホ・タブレット縦幅では従来の縦スクロール配置に戻す */
+@media (max-width:900px){
+ html,body{height:auto;min-height:100%;}
+ body{display:block;overflow:auto;}
+ header{flex:initial;}
+ main{height:auto;min-height:0;flex:none;overflow:visible;margin:auto;}
+ .appLayout{height:auto;min-height:0;}
+ .appLayout>.panel{height:auto;min-height:0;}
+ .settingsPanel,.rankingWrap{overflow:visible;}
+ .racePanel{display:block;overflow:visible;}
+ .racePanel .courseStage{flex:none;height:auto;min-height:0;aspect-ratio:1100 / 620;}
+ .racePanel #raceCanvas{width:100%;height:100%;}
+ .racePanel .raceMeta{max-height:none;overflow:visible;}
+}
+
+
+
+/* Ver.0.14: two-step flow — setup screen first, then race + ranking (7:3). */
+.settingsScreen[hidden], .raceScreen[hidden]{display:none !important;}
+.settingsScreen{width:100%;max-width:1080px;height:100%;min-height:0;margin:0 auto;}
+.settingsPanel{width:100%;height:100%;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;}
+.startRaceButton{display:block;width:100%;min-height:52px;margin-top:14px;font-size:16px;font-weight:800;letter-spacing:.02em;background:#26765d;border-color:#45a987;}
+.startRaceButton:hover{background:#2d896b;}
+.raceScreen{width:100%;height:100%;min-height:0;display:grid;grid-template-columns:minmax(0,7fr) minmax(260px,3fr);gap:12px;align-items:stretch;}
+.raceScreen>.panel{height:100%;min-width:0;min-height:0;grid-column:auto;grid-row:auto;}
+.racePanel{display:flex;flex-direction:column;overflow:hidden;}
+.racePanel .raceHeader,.racePanel .raceToolbar,.racePanel .raceMeta,.racePanel #results{flex:0 0 auto;}
+.racePanel .raceToolbar{grid-template-columns:minmax(0,1fr) minmax(175px,.42fr);}
+.racePanel .raceControls{grid-template-columns:repeat(2,minmax(0,1fr));}
+.racePanel .raceControls>*{min-height:46px;font-size:13px;}
+.racePanel .courseStage{flex:1 1 auto;width:100%;height:auto;min-height:260px;max-width:none;aspect-ratio:auto;margin:0;}
+.racePanel #raceCanvas{display:block;width:100%;height:100%;}
+.racePanel .raceMeta{max-height:70px;overflow:auto;}
+.racePanel #results{max-height:90px;overflow:auto;}
+.rankingWrap{position:static;max-height:none;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;}
+.rankingWrap .rankingPanel{margin:0;}
+.rankingWrap #liveRanking{grid-template-columns:minmax(0,1fr);}
+
+@media (min-width:901px){
+ .settingsScreen{max-width:1080px;}
+ .settingsPanel{padding:16px;display:flex;flex-direction:column;overflow:hidden;}
+ .settingsContent{flex:1 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;}
+ .settingsFooter{flex:0 0 auto;padding-top:10px;margin-top:8px;border-top:1px solid var(--line);background:var(--panel);}
+ .startRaceButton{margin-top:0;}
+}
+@media (max-width:1250px) and (min-width:901px){
+ .raceScreen{grid-template-columns:minmax(0,7fr) minmax(230px,3fr);}
+ .racePanel .raceToolbar{grid-template-columns:minmax(0,1fr) minmax(155px,.42fr);}
+ .racePanel .raceControls>*{font-size:11px;padding:6px 3px;}
+ .rankingWrap .liveRankItem{grid-template-columns:18px 23px minmax(0,1fr) auto;gap:3px;padding:4px 3px;}
+ .rankingWrap .rankName{font-size:10px;}
+ .rankingWrap .rankGap{font-size:9px;}
+}
+@media (max-width:900px){
+ html,body{height:auto;min-height:100%;}
+ body{display:block;overflow:auto;}
+ main{height:auto;min-height:0;flex:none;overflow:visible;margin:auto;padding:9px;}
+ .settingsScreen{height:auto;max-height:none;max-width:850px;margin:0 auto;}
+ .settingsPanel{height:auto;max-height:none;display:block;overflow:visible;}
+ .settingsContent{overflow:visible;}
+ .settingsFooter{padding-top:10px;margin-top:8px;border-top:1px solid var(--line);}
+ .startRaceButton{margin-top:0;}
+ .raceScreen{height:auto;min-height:0;display:flex;flex-direction:column;max-width:100%;}
+ .raceScreen>.panel{height:auto;min-height:0;}
+ .racePanel{display:block;overflow:visible;order:1;}
+ .racePanel .raceToolbar{grid-template-columns:minmax(0,1fr) minmax(190px,.85fr);}
+ .racePanel .courseStage{height:auto;min-height:0;flex:none;aspect-ratio:1100 / 620;}
+ .racePanel #raceCanvas{width:100%;height:100%;}
+ .racePanel .raceMeta{max-height:none;overflow:visible;}
+ .rankingWrap{order:2;max-height:none;overflow:visible;}
+ .rankingWrap #liveRanking{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media (max-width:600px){
+ .racePanel .raceToolbar{grid-template-columns:1fr;}
+ .racePanel .raceControls>*{min-height:40px;font-size:12px;}
+ .rankingWrap #liveRanking{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
+</style>
+</head>
+<body>
+<header><h1>🏇 競馬シミュレーター <small style="color:#9fb2bc">2D RACE VIEW Ver.0.14</small></h1><span id="status">待機中</span></header>
+<main>
+ <section id="settingsScreen" class="settingsScreen">
+  <section class="panel settingsPanel">
+  <div class="settingsContent">
+  <h2>レース設定</h2>
+  <div class="row settingsRow">
+   <div><label>出走頭数</label><select id="count"><option>6</option><option>8</option><option>10</option><option>12</option><option>14</option><option>16</option><option selected>18</option></select></div>
+   <div><label>競馬場</label><select id="course"><option>東京</option><option>中山</option><option>京都</option><option>阪神</option><option>中京</option><option>新潟</option><option>福島</option><option>小倉</option><option>札幌</option><option>函館</option></select></div>
+   <div><label>距離</label><select id="distance"><option>1200</option><option>1400</option><option>1600</option><option selected>2000</option><option>2200</option><option>2400</option><option>2500</option><option>3000</option><option>3200</option></select></div>
+  </div>
+  <div class="row settingsRow" style="margin-top:3px">
+   <div><label>馬場</label><select id="surface"><option>芝</option><option>ダート</option></select></div>
+   <div><label>回り設定</label><select id="courseVariant"><option value="auto">距離で自動</option><option value="inner">内回り</option><option value="outer">外回り</option></select></div>
+  </div>
+  <div class="profile courseProfile" id="courseProfile">東京：長い直線と緩やかな上り坂</div>
+  <label>出走馬・枠番・馬名</label>
+  <div id="horseInputs"></div>
+  <div class="row" style="margin-top:10px"><button id="update">設定を反映</button><button class="secondary" id="randomNames">馬名サンプル</button></div>
+  <h2 style="margin-top:12px">各馬のラップ設定（200mごと・秒）</h2>
+  <p class="note">各馬の「ラップ」を開くと個別編集できます。初期値は馬場・距離別のランダム生成です。</p>
+  <div class="row" style="margin-top:6px"><button class="secondary" id="randomLaps">ラップを再ランダム</button></div>
+  <p class="note">※ラップから各200m区間の速度を計算する簡易シミュレーションです。実際の競走能力・位置取りを完全に予測するものではありません。</p>
+  </div>
+  <div class="settingsFooter">
+   <button id="start" class="startRaceButton">▶ レース開始・レース画面へ</button>
+  </div>
+ </section>
+ </section>
+
+ <section id="raceScreen" class="raceScreen" hidden>
+ <section class="panel racePanel">
+  <div class="raceHeader"><h2>レース展開（上空からのコース図）</h2><span class="note">COURSE VIEW</span></div>
+  <div class="raceToolbar">
+   <div id="timerHud" aria-label="タイム・先頭通過距離">
+    <div class="timerMain">
+     <span class="metricLabel">ELAPSED TIME ／ 計測タイム</span>
+     <strong id="elapsedClock">00:00.0</strong>
+    </div>
+    <div class="timerSub">
+     <span id="distanceClock">先頭通過距離 0 / 2000m</span>
+     <span id="leadClock">先頭馬：—</span>
+     <span class="gapStat"><small>先頭との差</small><strong id="gapMetric">—</strong></span>
+    </div>
+   </div>
+   <div class="row raceControls" aria-label="レース操作">
+    <button class="secondary" id="pause">⏸ 一時停止</button>
+    <button class="secondary" id="reset">↩ 設定画面へ戻る</button>
+   </div>
+  </div>
+  <div class="courseStage">
+   <canvas id="raceCanvas" width="1100" height="620"></canvas>
+  </div>
+  <div class="raceMeta">
+   <div class="legend"><span>①白</span><span>②黒</span><span>③赤</span><span>④青</span><span>⑤黄</span><span>⑥緑</span><span>⑦橙</span><span>⑧桃</span></div>
+   <div class="profile" id="raceInfo">東京 芝 2000m ／ START待ち</div>
+  </div>
+  <div class="results" id="results"></div>
+ </section>
+
+ <section class="panel rankingWrap">
+  <section class="rankingPanel" aria-label="リアルタイム順位">
+   <div class="rankingHead"><strong>リアルタイム順位</strong><span id="rankStatus">START待ち</span></div>
+   <ol id="liveRanking"></ol>
+  </section>
+ </section>
+ </section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+// Older iOS Safari compatibility fallbacks.
+window.requestAnimationFrame = window.requestAnimationFrame || window.webkitRequestAnimationFrame || function(cb){return window.setTimeout(function(){cb(Date.now());},16);};
+window.cancelAnimationFrame = window.cancelAnimationFrame || window.webkitCancelAnimationFrame || window.clearTimeout;
+const names=['ジンマクスター','オオサカブレイブ','ミライノカゼ','サクラテンペスト','キングオブラン','ブルーインパクト','ハヤブサロード','ゴールドシャワー','ナニワノユメ','スピードスター','グリーンファング','ラストスパート','ホクトノヒカリ','ダートキング','ターフエンペラー','ミッドナイト','サンライズ','フルスロットル'];
+const frames=[
+ {bg:'#fff',fg:'#17212a',stroke:'#b9c4ca'},{bg:'#252525',fg:'#fff',stroke:'#777'},
+ {bg:'#df3038',fg:'#fff',stroke:'#ff8b8b'},{bg:'#2866c7',fg:'#fff',stroke:'#8bb8ff'},
+ {bg:'#f0d52e',fg:'#28220a',stroke:'#fff09a'},{bg:'#26964f',fg:'#fff',stroke:'#8de0a8'},
+ {bg:'#ed8a24',fg:'#fff',stroke:'#ffc17c'},{bg:'#e9a6c6',fg:'#35202b',stroke:'#ffd5e8'}
+];
+// JRA公表値を基準にした競馬場別コース定義。図は縮尺を合わせた模式平面図。
+// lap=1周距離(m)、straight=最終直線距離(m)。backRatio/curveXは平面図の形状補正。
+const courseNotes={
+ 東京:'左回り。大きく長い直線に加え、芝2000mは1コーナー奥のポケットから短い距離でコーナーへ入る。',
+ 中山:'右回り。内回りは小回りの4コーナー、外回りは3〜4コーナーが広く、直線は短く急坂。',
+ 京都:'右回り。内回りはコンパクト、外回りは3コーナーの坂から下る大きなコーナーと長めの直線。',
+ 阪神:'右回り。内回りは小さく、外回りは大きな3〜4コーナーと長い直線・急坂。',
+ 中京:'左回り。3コーナーが外へ張り出す非対称形状で、長い直線に急坂がある。',
+ 新潟:'左回り。外回りは非常に大きなコーナーと長い直線、内回りは小さく独立した形状。',
+ 福島:'右回り。小回りで3〜4コーナーがスパイラル状に広がる。',
+ 小倉:'右回り。小回りで3〜4コーナーがスパイラル状。向正面から3コーナーにかけて起伏がある。',
+ 札幌:'右回り。4つのコーナーが大きく、直線が短い円形に近いレイアウト。',
+ 函館:'右回り。札幌よりコンパクトで、短い直線と小さなコーナーが特徴。'
+};
+const courseData={
+ 東京:{direction:'left',turf:{lap:2083.1,straight:525.9,variant:'芝 Aコース',backRatio:1.00,curveX:1.13},dirt:{lap:1899,straight:501.6,variant:'ダート',backRatio:1.00,curveX:1.08}},
+ 中山:{direction:'right',turfInner:{lap:1667.1,straight:310,variant:'芝・内回り',backRatio:0.96,curveX:0.82},turfOuter:{lap:1839.7,straight:310,variant:'芝・外回り',backRatio:1.08,curveX:1.04},dirt:{lap:1493,straight:308,variant:'ダート',backRatio:0.94,curveX:0.82}},
+ 京都:{direction:'right',turfInner:{lap:1782.8,straight:328.4,variant:'芝・内回り',backRatio:0.98,curveX:0.88},turfOuter:{lap:1894.3,straight:403.7,variant:'芝・外回り',backRatio:1.08,curveX:1.14},dirt:{lap:1607.6,straight:329.1,variant:'ダート',backRatio:1.00,curveX:0.98}},
+ 阪神:{direction:'right',turfInner:{lap:1689,straight:356.5,variant:'芝・内回り',backRatio:0.94,curveX:0.88},turfOuter:{lap:2089,straight:473.6,variant:'芝・外回り',backRatio:1.18,curveX:1.18},dirt:{lap:1517.6,straight:352.7,variant:'ダート',backRatio:0.96,curveX:0.94}},
+ 中京:{direction:'left',turf:{lap:1705.9,straight:412.5,variant:'芝 Aコース',backRatio:1.05,curveX:1.13},dirt:{lap:1530,straight:410.7,variant:'ダート',backRatio:1.03,curveX:1.10}},
+ 新潟:{direction:'left',turfInner:{lap:1623,straight:358.7,variant:'芝・内回り',backRatio:0.96,curveX:0.92},turfOuter:{lap:2223,straight:658.7,variant:'芝・外回り',backRatio:1.12,curveX:1.20},dirt:{lap:1472.5,straight:353.9,variant:'ダート',backRatio:1.00,curveX:0.98}},
+ 福島:{direction:'right',turf:{lap:1600,straight:292,variant:'芝 Aコース',backRatio:0.94,curveX:0.82},dirt:{lap:1444.6,straight:295.7,variant:'ダート',backRatio:0.94,curveX:0.82}},
+ 小倉:{direction:'right',turf:{lap:1615.1,straight:293,variant:'芝 Aコース',backRatio:0.92,curveX:0.84},dirt:{lap:1445.4,straight:291.3,variant:'ダート',backRatio:0.92,curveX:0.84}},
+ 札幌:{direction:'right',turf:{lap:1640.9,straight:266.1,variant:'芝 Aコース',backRatio:0.90,curveX:1.00},dirt:{lap:1487,straight:264.3,variant:'ダート',backRatio:0.90,curveX:0.98}},
+ 函館:{direction:'right',turf:{lap:1626.6,straight:262.1,variant:'芝 Aコース',backRatio:0.88,curveX:0.86},dirt:{lap:1475.8,straight:260.3,variant:'ダート',backRatio:0.88,curveX:0.84}}
+};
+// 競馬場別の平面形状プロファイル。
+// 参照: keiba-course.com の各競馬場・距離別コース図と「コース特徴・形態」説明。
+// 直線比率だけでなく、左右コーナーの半径差・進入出口の曲率・向正面の偏位を個別設定。
+// dirt は芝の内外回り形状を流用せず、独立したダート周回路として描画する。
+const geometryProfiles={
+ 東京:{
+  main:{left:1.20,right:1.10,y:.91,handleLeft:.56,handleRight:.60,backShift:.025,homeY:.98,backY:1.02,leftApexY:-.015,rightApexY:.025,leftLower:.52,leftUpper:.62,rightLower:.60,rightUpper:.57,label:'大きな左回り・長い直線',detail:'大きく緩やかなコーナーと長い直線'},
+  dirt:{left:1.12,right:1.06,y:.94,handleLeft:.59,handleRight:.62,backShift:.018,homeY:.98,backY:1.02,leftApexY:0,rightApexY:.015,leftLower:.58,leftUpper:.62,rightLower:.61,rightUpper:.59,label:'ダート大回り',detail:'芝より内側の独立したダート周回路'}
+ },
+ 中山:{
+  inner:{left:.76,right:.82,y:.88,handleLeft:.79,handleRight:.76,backShift:-.035,homeY:1.00,backY:.98,leftApexY:-.025,rightApexY:.018,leftLower:.78,leftUpper:.70,rightLower:.74,rightUpper:.78,label:'内回り・小回り4コーナー',detail:'小さなコーナーと短い直線'},
+  outer:{left:1.12,right:1.16,y:1.02,handleLeft:.62,handleRight:.63,backShift:.035,homeY:1.00,backY:1.02,leftApexY:-.01,rightApexY:.02,leftLower:.59,leftUpper:.66,rightLower:.65,rightUpper:.61,label:'外回り・大きなコーナー',detail:'内回りより大きくゆったりした外回り'},
+  dirt:{left:.88,right:.91,y:.91,handleLeft:.72,handleRight:.73,backShift:-.025,homeY:1,backY:1,leftApexY:-.01,rightApexY:.01,leftLower:.73,leftUpper:.70,rightLower:.72,rightUpper:.75,label:'ダート小回り',detail:'コンパクトなダート周回路'}
+ },
+ 京都:{
+  inner:{left:.86,right:.92,y:.91,handleLeft:.76,handleRight:.73,backShift:-.018,homeY:1,backY:1,leftApexY:-.055,rightApexY:.018,leftLower:.80,leftUpper:.68,rightLower:.72,rightUpper:.76,label:'内回り・タイトなコーナー',detail:'3コーナーの坂を下って短めの直線へ'},
+  outer:{left:1.28,right:1.12,y:1.02,handleLeft:.59,handleRight:.62,backShift:.025,homeY:1,backY:1.03,leftApexY:-.065,rightApexY:.02,leftLower:.54,leftUpper:.64,rightLower:.63,rightUpper:.58,label:'外回り・大きな3〜4コーナー',detail:'3コーナーの坂と大きく回り込む外回り'},
+  dirt:{left:.98,right:.98,y:.96,handleLeft:.68,handleRight:.68,backShift:0,homeY:1,backY:1,leftApexY:-.015,rightApexY:.01,leftLower:.67,leftUpper:.70,rightLower:.70,rightUpper:.67,label:'ダート周回路',detail:'芝とは別形状のダートコース'}
+ },
+ 阪神:{
+  inner:{left:.88,right:.86,y:.92,handleLeft:.75,handleRight:.74,backShift:-.025,homeY:1,backY:.99,leftApexY:-.015,rightApexY:.01,leftLower:.73,leftUpper:.77,rightLower:.76,rightUpper:.72,label:'内回り・コンパクト',detail:'内回りの4コーナーから短めの直線へ'},
+  outer:{left:1.22,right:1.18,y:1.04,handleLeft:.58,handleRight:.60,backShift:.045,homeY:1,backY:1.03,leftApexY:-.018,rightApexY:.02,leftLower:.56,leftUpper:.61,rightLower:.60,rightUpper:.56,label:'外回り・大きなコーナー',detail:'大きな外回りと長い直線、ゴール前の急坂'},
+  dirt:{left:.96,right:.94,y:.95,handleLeft:.69,handleRight:.70,backShift:.005,homeY:1,backY:1,leftApexY:-.01,rightApexY:.01,leftLower:.68,leftUpper:.72,rightLower:.70,rightUpper:.68,label:'ダート周回路',detail:'芝外回りとは異なるダート形状'}
+ },
+ 中京:{
+  main:{left:1.30,right:1.06,y:.92,handleLeft:.55,handleRight:.63,backShift:.035,homeY:1,backY:1.02,leftApexY:-.065,rightApexY:.015,leftLower:.49,leftUpper:.70,rightLower:.65,rightUpper:.57,leftBulge:.10,label:'3コーナーが張り出す非対称形',detail:'3コーナー側が外へ膨らむ非対称の大回り'},
+  dirt:{left:1.18,right:1.04,y:.94,handleLeft:.58,handleRight:.63,backShift:.025,homeY:1,backY:1,leftApexY:-.035,rightApexY:.01,leftLower:.55,leftUpper:.68,rightLower:.64,rightUpper:.58,label:'ダート大回り',detail:'長い直線を持つ独立したダート周回路'}
+ },
+ 新潟:{
+  inner:{left:.86,right:.93,y:.88,handleLeft:.76,handleRight:.72,backShift:-.018,homeY:1,backY:1,leftApexY:-.012,rightApexY:.015,leftLower:.77,leftUpper:.69,rightLower:.72,rightUpper:.75,label:'内回り・コンパクト',detail:'外回りより小さく、直線も短い内回り'},
+  outer:{left:1.36,right:1.25,y:1.04,handleLeft:.53,handleRight:.58,backShift:.055,homeY:1,backY:1.04,leftApexY:-.025,rightApexY:.025,leftLower:.49,leftUpper:.58,rightLower:.58,rightUpper:.53,label:'外回り・超大回り',detail:'広いコーナーと国内最長級の直線'},
+  dirt:{left:.98,right:.96,y:.95,handleLeft:.68,handleRight:.70,backShift:.005,homeY:1,backY:1,leftApexY:-.01,rightApexY:.01,leftLower:.68,leftUpper:.69,rightLower:.70,rightUpper:.68,label:'ダート周回路',detail:'芝内外回りと分けたダート形状'}
+ },
+ 福島:{
+  main:{left:.88,right:.91,y:.91,handleLeft:.78,handleRight:.75,backShift:-.045,homeY:1,backY:.98,leftApexY:-.025,rightApexY:.02,leftLower:.86,leftUpper:.66,rightLower:.72,rightUpper:.82,spiral:.16,label:'小回り・スパイラル',detail:'小回りで3〜4コーナーの出口が広がる'},
+  dirt:{left:.88,right:.90,y:.92,handleLeft:.77,handleRight:.75,backShift:-.03,homeY:1,backY:1,leftApexY:-.02,rightApexY:.02,leftLower:.82,leftUpper:.68,rightLower:.73,rightUpper:.80,label:'ダート小回り',detail:'コンパクトな右回りダート'}
+ },
+ 小倉:{
+  main:{left:.90,right:.92,y:.92,handleLeft:.77,handleRight:.75,backShift:-.028,homeY:1,backY:.98,leftApexY:-.035,rightApexY:.015,leftLower:.84,leftUpper:.68,rightLower:.73,rightUpper:.81,spiral:.14,label:'小回り・スパイラル',detail:'小回りで3〜4コーナーがスパイラル状'},
+  dirt:{left:.89,right:.91,y:.92,handleLeft:.76,handleRight:.75,backShift:-.02,homeY:1,backY:1,leftApexY:-.025,rightApexY:.015,leftLower:.81,leftUpper:.69,rightLower:.73,rightUpper:.79,label:'ダート小回り',detail:'芝より内側の小回りダート'}
+ },
+ 札幌:{
+  main:{left:1.04,right:1.03,y:1.04,handleLeft:.71,handleRight:.72,backShift:0,homeY:1,backY:1,leftApexY:0,rightApexY:0,leftLower:.70,leftUpper:.72,rightLower:.72,rightUpper:.70,label:'丸みの強い円形に近い形',detail:'4つのコーナーが大きく、直線が短い'},
+  dirt:{left:1.00,right:1.00,y:1.01,handleLeft:.70,handleRight:.71,backShift:0,homeY:1,backY:1,leftApexY:0,rightApexY:0,leftLower:.70,leftUpper:.70,rightLower:.71,rightUpper:.70,label:'丸みのあるダート',detail:'芝コースに沿う円形に近いダート周回路'}
+ },
+ 函館:{
+  main:{left:.91,right:.90,y:.94,handleLeft:.78,handleRight:.77,backShift:-.018,homeY:1,backY:1,leftApexY:-.005,rightApexY:.008,leftLower:.78,leftUpper:.78,rightLower:.77,rightUpper:.79,label:'小さめの楕円・短い直線',detail:'札幌よりコンパクトで直線が短い'},
+  dirt:{left:.90,right:.89,y:.93,handleLeft:.77,handleRight:.77,backShift:-.012,homeY:1,backY:1,leftApexY:-.005,rightApexY:.008,leftLower:.77,leftUpper:.78,rightLower:.77,rightUpper:.78,label:'小回りダート',detail:'小さなコーナーと短い直線のダート'}
+ }
+};
+function getGeometryProfile(course,variant,surface){
+ const entry=geometryProfiles[course]||{};
+ if(surface==='ダート')return entry.dirt||entry.main||entry;
+ if(entry.inner||entry.outer){
+  if(variant==='inner'||variant==='outer')return entry[variant]||entry.inner||entry.outer;
+  return entry.main||entry.inner||entry.outer;
+ }
+ return entry.main||entry;
+}
+
+
+let horses=[],raf=0,lastStamp=0,elapsed=0,running=false,paused=false,finish=[];
+const canvas=$('raceCanvas'),ctx=canvas.getContext('2d');
+let trackGeometry=null;
+function splitCount(){return Math.max(1,Math.ceil(+$('distance').value/200))}
+function randomLapsForHorse(i){
+ const n=splitCount(),distance=+$('distance').value,surface=$('surface').value;
+ // 200mごとの平均ペースを芝・ダートと距離に合わせ、馬ごとに能力差と脚質差を付ける。
+ const base=(surface==='芝'?12.02:12.42)+(distance>=2400?0.10:distance<=1400?-0.10:0)+(distance>=2800?0.08:0);
+ const ability=(Math.random()-.5)*.34;
+ const style=Math.floor(Math.random()*4);
+ let previousNoise=0;
+ return Array.from({length:n},(_,j)=>{
+  const phase=n<=1?0:j/(n-1);
+  let shape=0;
+  if(j===0)shape+=.42;                 // 序盤の加速区間
+  else if(j===1)shape-=.24;
+  if(style===0)shape+=(phase<.3?-.12:phase>.78?.08:0);       // 先行型
+  else if(style===1)shape+=(phase<.62?.12: -.25);            // 差し型
+  else if(style===2)shape+=Math.sin(phase*Math.PI*2)*.10;    // 持続型
+  else shape+=(phase<.25?-.10:phase>.8?-.08:.05);            // 好位型
+  const noise=(Math.random()-.5)*.34;
+  const value=Math.max(10.75,Math.min(13.85,base+ability+shape+noise+previousNoise*.18));
+  previousNoise=noise;
+  return value.toFixed(1);
+ }).join(', ');
+}
+function buildRows(){
+ const root=$('horseInputs');root.innerHTML='';
+ for(let i=0;i<+$('count').value;i++){
+  const frame=Math.min(8,Math.ceil((i+1)/(+$('count').value/8)));
+  const d=document.createElement('div');d.className='horseRow';
+  d.innerHTML=`<small>${i+1}番</small><input class="horseName" value="${names[i]||'競走馬'+(i+1)}" aria-label="馬名"><input class="horseFrame" type="number" min="1" max="8" value="${frame}" aria-label="枠番"><details><summary>ラップ</summary><div class="lapEditor"><input class="lapInput" value="${randomLapsForHorse(i)}" aria-label="個別ラップ"><small>カンマ区切り・秒。200m区間ごとに入力</small></div></details>`;
+  root.appendChild(d);
+ }
+}
+function readHorses(){
+ const n=splitCount();
+ return [...$('horseInputs').children].map((r,i)=>{
+  let laps=r.querySelector('.lapInput').value.split(/[,，\s]+/).map(Number).filter(x=>Number.isFinite(x)&&x>0);
+  if(!laps.length)laps=Array(n).fill(12);
+  if(laps.length<n)laps=Array.from({length:n},(_,k)=>laps[Math.min(laps.length-1,k)]);
+  if(laps.length>n)laps=laps.slice(0,n);
+  const frame=Math.max(1,Math.min(8,+r.querySelector('.horseFrame').value||1));
+  return {number:i+1,name:r.querySelector('.horseName').value||`馬${i+1}`,frame,laps,total:0,progress:0,finishTime:null};
+ }).map(h=>({...h,total:h.laps.reduce((a,b)=>a+b,0)}));
+}
+function getTrackSpec(){
+ const course=$('course').value, surface=$('surface').value, distance=+$('distance').value;
+ const data=courseData[course];
+ let spec,variant='';
+ if(surface==='ダート'){
+  spec=data.dirt;variant='ダート';
+ }else if(data.turfInner && data.turfOuter){
+  let useOuter;
+  const variantControl=$('courseVariant');
+  const forced=(variantControl && variantControl.value)||'auto';
+  if(forced==='outer')useOuter=true;
+  else if(forced==='inner')useOuter=false;
+  else if(course==='中山')useOuter=[1200,1600,2200,2600,3200].includes(distance);
+  else if(course==='京都')useOuter=[1600,1800,2200,2400,3000,3200].includes(distance);
+  else if(course==='阪神')useOuter=[1600,1800,2400,2600,3200].includes(distance);
+  else if(course==='新潟')useOuter=[1600,1800,2000,3000,3200].includes(distance);
+  else useOuter=false;
+  spec=useOuter?data.turfOuter:data.turfInner;variant=useOuter?'外回り':'内回り';
+ }else{
+  spec=data.turf;variant=spec.variant||'芝';
+ }
+ const geometryVariant=variant==='外回り'?'outer':variant==='内回り'?'inner':'main';
+ const shape=getGeometryProfile(course,geometryVariant,surface);
+ return {...spec,shape,geometryVariant,direction:data.direction,directionLabel:data.direction==='left'?'左回り':'右回り',course,surface,distance,variant:spec.variant||`${surface} ${variant}`};
+}
+function cubicPoint(a,b,c,d,t){
+ const mt=1-t;
+ return {x:mt*mt*mt*a.x+3*mt*mt*t*b.x+3*mt*t*t*c.x+t*t*t*d.x,
+         y:mt*mt*mt*a.y+3*mt*mt*t*b.y+3*mt*t*t*c.y+t*t*t*d.y};
+}
+function makeTrackSamples(spec){
+ const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2+8;
+ const shape=spec.shape||{};
+ const backMeters=spec.straight*(spec.backRatio||1);
+ const curveBudget=Math.max(260,spec.lap-spec.straight-backMeters);
+ const meanRadius=curveBudget/(2*Math.PI);
+ const curveX=spec.curveX||1;
+ const baseRy=meanRadius*2/(1+curveX);
+ const baseRx=baseRy*curveX;
+ const leftRxRaw=baseRx*(shape.left||1),rightRxRaw=baseRx*(shape.right||1);
+ const ryRaw=baseRy*(shape.y||1);
+ const maxHalf=Math.max(spec.straight,backMeters)/2+Math.max(leftRxRaw,rightRxRaw);
+ const estimatedHeight=2*ryRaw+130;
+ const scale=Math.min(1.26,(W-190)/(maxHalf*2+120),(H-165)/estimatedHeight);
+ const ry=ryRaw*scale,leftRx=leftRxRaw*scale,rightRx=rightRxRaw*scale;
+ const homeHalf=spec.straight*scale/2,backHalf=backMeters*scale/2;
+ const shift=(shape.backShift||0)*meanRadius*scale;
+ const homeY=cy+ry*(shape.homeY||1),backY=cy-ry*(shape.backY||1);
+ const homeL={x:cx-homeHalf+(shape.homeLeftShift||0)*scale,y:homeY};
+ const homeR={x:cx+homeHalf+(shape.homeRightShift||0)*scale,y:homeY};
+ const backL={x:cx-backHalf+shift+(shape.backLeftShift||0)*scale,y:backY};
+ const backR={x:cx+backHalf+shift+(shape.backRightShift||0)*scale,y:backY};
+ const leftApex={x:(homeL.x+backL.x)/2-leftRx,y:cy+ry*(shape.leftApexY||0)};
+ const rightApex={x:(homeR.x+backR.x)/2+rightRx,y:cy+ry*(shape.rightApexY||0)};
+ const points=[];
+ const add=p=>{if(!points.length||Math.hypot(points[points.length-1].x-p.x,points[points.length-1].y-p.y)>.01)points.push(p)};
+ const line=(a,b,n=48)=>{for(let i=1;i<=n;i++){const t=i/n;add({x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t})}};
+ const bez=(a,b,c,d,n=42)=>{for(let i=1;i<=n;i++)add(cubicPoint(a,b,c,d,i/n));};
+ const rl=shape.rightLower||shape.handleRight||.58,ru=shape.rightUpper||shape.handleRight||.58;
+ const spiral=shape.spiral||0;
+ const ll=(shape.leftLower||shape.handleLeft||.58)*(1+spiral*.25),lu=(shape.leftUpper||shape.handleLeft||.58)*(1-spiral*.25);
+ // ホームストレッチ → 右側の1・2コーナー。入口と出口を別曲率にして競馬場差を表現。
+ add(homeL);line(homeL,homeR,Math.max(24,Math.round(spec.straight/7)));
+ bez(homeR,
+  {x:homeR.x+rightRx*rl,y:homeR.y+ry*.045},
+  {x:rightApex.x+rightRx*(shape.rightBulge||0),y:rightApex.y+ry*rl*.48},
+  rightApex);
+ bez(rightApex,
+  {x:rightApex.x+rightRx*(shape.rightBulge2||0),y:rightApex.y-ry*ru*.48},
+  {x:backR.x+rightRx*ru,y:backR.y-ry*.045},
+  backR);
+ // 向正面。中京などは左右位置をずらして非対称なレイアウトにする。
+ line(backR,backL,Math.max(24,Math.round(backMeters/7)));
+ // 左側の3・4コーナー。福島・小倉は入口を締め、出口を開くスパイラル傾向を反映。
+ bez(backL,
+  {x:backL.x-leftRx*lu,y:backL.y+ry*.045},
+  {x:leftApex.x-leftRx*(shape.leftBulge||0),y:leftApex.y-ry*lu*.48},
+  leftApex);
+ bez(leftApex,
+  {x:leftApex.x-leftRx*(shape.leftBulge2||0),y:leftApex.y+ry*ll*.48},
+  {x:homeL.x-leftRx*ll,y:homeL.y-ry*.045},
+  homeL);
+ if(Math.hypot(points[0].x-points[points.length-1].x,points[0].y-points[points.length-1].y)<1)points.pop();
+ const raw=[...points,points[0]],cumulative=[0];
+ for(let i=1;i<raw.length;i++)cumulative.push(cumulative[i-1]+Math.hypot(raw[i].x-raw[i-1].x,raw[i].y-raw[i-1].y));
+ // STARTはホームストレッチ終端寄り。走行方向に応じて周回順を組み替える。
+ const homeLength=spec.straight*scale;
+ const startDistance=spec.direction==='left'?homeLength*.985:homeLength*.015;
+ let seg=0;while(seg<cumulative.length-2&&cumulative[seg+1]<startDistance)seg++;
+ const segLen=cumulative[seg+1]-cumulative[seg],t=segLen?(startDistance-cumulative[seg])/segLen:0;
+ const start={x:raw[seg].x+(raw[seg+1].x-raw[seg].x)*t,y:raw[seg].y+(raw[seg+1].y-raw[seg].y)*t};
+ const ordered=[start];
+ if(spec.direction==='left'){
+  for(let j=seg+1;j<raw.length;j++)ordered.push(raw[j]);
+  for(let j=1;j<=seg;j++)ordered.push(raw[j]);
+ }else{
+  for(let j=seg;j>=0;j--)ordered.push(raw[j]);
+  for(let j=raw.length-2;j>seg;j--)ordered.push(raw[j]);
+ }
+ ordered.push(start);
+ const lengths=[0];for(let i=1;i<ordered.length;i++)lengths.push(lengths[i-1]+Math.hypot(ordered[i].x-ordered[i-1].x,ordered[i].y-ordered[i-1].y));
+ return {points:ordered,lengths,total:lengths[lengths.length-1],spec,center:{x:cx,y:cy},trackWidth:82};
+}
+function pointAt(progress,lane=0){
+ if(!trackGeometry)return {x:canvas.width/2,y:canvas.height/2};
+ const g=trackGeometry;
+ const wrapped=((progress%1)+1)%1;
+ const dist=wrapped*g.total,ls=g.lengths,pts=g.points;
+ let lo=0,hi=ls.length-1;
+ while(lo<hi-1){const mid=(lo+hi)>>1;if(ls[mid]<=dist)lo=mid;else hi=mid;}
+ const segLen=ls[hi]-ls[lo],t=segLen?(dist-ls[lo])/segLen:0;
+ const a=pts[lo],b=pts[hi],dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1;
+ const nx=-dy/len,ny=dx/len;
+ return {x:a.x+dx*t+nx*lane,y:a.y+dy*t+ny*lane,tangent:{x:dx/len,y:dy/len},normal:{x:nx,y:ny}};
+}
+function drawTrack(){
+ const W=canvas.width,H=canvas.height,spec=getTrackSpec();
+ if(!trackGeometry||trackGeometry.spec.course!==spec.course||trackGeometry.spec.surface!==spec.surface||trackGeometry.spec.distance!==spec.distance||trackGeometry.spec.variant!==spec.variant||trackGeometry.spec.geometryVariant!==spec.geometryVariant)trackGeometry=makeTrackSamples(spec);
+ ctx.clearRect(0,0,W,H);
+ ctx.fillStyle=spec.surface==='芝'?'#315f3c':'#6e523e';ctx.fillRect(0,0,W,H);
+ const pts=trackGeometry.points;
+ const trace=()=>{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);};
+ // コースの外縁・走路・内縁を重ね、各場のコーナー半径を見分けやすくする。
+ trace();ctx.lineCap='round';ctx.lineJoin='round';ctx.lineWidth=98;ctx.strokeStyle='#e7eadb';ctx.stroke();
+ trace();ctx.lineWidth=88;ctx.strokeStyle=spec.surface==='芝'?'#9dcf8b':'#bd946d';ctx.stroke();
+ trace();ctx.lineWidth=76;ctx.strokeStyle=spec.surface==='芝'?'#6eae68':'#96704f';ctx.stroke();
+ trace();ctx.lineWidth=1.2;ctx.setLineDash([8,10]);ctx.strokeStyle='rgba(255,255,255,.32)';ctx.stroke();ctx.setLineDash([]);
+ // FINISHラインは実際の進行方向に対して直角に描く。
+ const start=pointAt(0),sn=start.normal||{x:0,y:1};
+ ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;ctx.setLineDash([7,5]);ctx.beginPath();ctx.moveTo(start.x-sn.x*43,start.y-sn.y*43);ctx.lineTo(start.x+sn.x*43,start.y+sn.y*43);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('START',start.x+sn.x*59,start.y+sn.y*59+4);
+ const f=pointAt(spec.distance/spec.lap),n=f.normal||{x:0,y:1};
+ ctx.strokeStyle='#fff';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(f.x-n.x*49,f.y-n.y*49);ctx.lineTo(f.x+n.x*49,f.y+n.y*49);ctx.stroke();
+ ctx.fillStyle='#fff';ctx.font='bold 15px sans-serif';ctx.textAlign='center';ctx.fillText('FINISH',f.x+n.x*65,f.y+n.y*65+5);
+ // 進行方向の矢印
+ const a=pointAt(.22),b=pointAt(.235);if(a.tangent&&b.tangent){
+  ctx.strokeStyle='rgba(255,255,255,.9)';ctx.fillStyle='rgba(255,255,255,.9)';ctx.lineWidth=3;
+  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+  const t=b.tangent||a.tangent;ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-t.x*12-t.y*7,b.y-t.y*12+t.x*7);ctx.lineTo(b.x-t.x*12+t.y*7,b.y-t.y*12-t.x*7);ctx.closePath();ctx.fill();
+ }
+ // 中央情報
+ const boxW=320,boxH=76,cx=trackGeometry.center.x,cy=trackGeometry.center.y;
+ ctx.fillStyle='rgba(10,25,30,.78)';ctx.fillRect(cx-boxW/2,cy-boxH/2,boxW,boxH);
+ ctx.fillStyle='#fff';ctx.font='bold 19px sans-serif';ctx.textAlign='center';ctx.fillText(`${spec.course} ${spec.surface} ${spec.distance}m`,cx,cy-12);
+ ctx.font='13px sans-serif';ctx.fillText(`${spec.variant} ／ ${spec.directionLabel} ／ ${spec.shape.label||'競馬場別形状'}`,cx,cy+12);
+ ctx.font='12px sans-serif';ctx.fillStyle='#d7e4e8';ctx.fillText(`1周 ${spec.lap.toLocaleString('ja-JP')}m　直線 ${spec.straight.toLocaleString('ja-JP')}m`,cx,cy+32);
+}
+
+function drawHorse(h){
+ const lane=(h.frame-4.5)*6+((h.number%2)-.5)*2;
+ const physicalProgress=h.progress*trackGeometry.spec.distance/trackGeometry.spec.lap;
+ const p=pointAt(physicalProgress,lane),style=frames[h.frame-1],x=p.x,y=p.y;
+ ctx.save();ctx.shadowColor='rgba(0,0,0,.35)';ctx.shadowBlur=5;ctx.shadowOffsetY=3;
+ ctx.beginPath();ctx.arc(x,y,16,0,Math.PI*2);ctx.fillStyle=rgbaColor(style.bg,.48);ctx.fill();
+ ctx.lineWidth=2.5;ctx.strokeStyle=style.stroke;ctx.stroke();
+ ctx.shadowColor='transparent';ctx.fillStyle=style.fg;ctx.font='bold 15px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(h.number),x,y+1);
+ ctx.restore();
+}
+function rgbaColor(hex,alpha){
+ let value=hex.replace('#','');
+ if(value.length===3)value=value.split('').map(ch=>ch+ch).join('');
+ const r=parseInt(value.slice(0,2),16),g=parseInt(value.slice(2,4),16),b=parseInt(value.slice(4,6),16);
+ return `rgba(${r},${g},${b},${alpha})`;
+}
+function escapeHTML(value){
+ return String(value).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function getRankedHorses(){
+ return [...horses].sort((a,b)=>{
+  if(a.finishTime!==null&&b.finishTime!==null)return a.finishTime-b.finishTime;
+  if(a.finishTime!==null)return -1;
+  if(b.finishTime!==null)return 1;
+  return (b.progress-a.progress)||(a.number-b.number);
+ });
+}
+function formatRaceTime(seconds){
+ const value=Math.max(0,seconds||0),minutes=Math.floor(value/60),rest=value-minutes*60;
+ return `${String(minutes).padStart(2,'0')}:${rest.toFixed(1).padStart(4,'0')}`;
+}
+function updateDashboard(){
+ const distance=+$('distance').value,ranked=getRankedHorses(),leader=ranked[0];
+ $('elapsedClock').textContent=formatRaceTime(elapsed);
+ $('distanceClock').textContent=`先頭通過距離 ${leader?Math.min(distance,leader.progress*distance).toFixed(0):0} / ${distance}m`;
+ $('leadClock').textContent=leader?`先頭馬：${leader.number}番 ${leader.name}`:'先頭馬：—';
+ const second=ranked[1];
+ $('gapMetric').textContent=second&&leader?`${Math.max(0,(leader.progress-second.progress)*distance).toFixed(0)}m`:'—';
+ const done=horses.length>0&&horses.every(h=>h.finishTime!==null);
+ $('rankStatus').textContent=running?'LIVE':paused?'PAUSE':done?'FINISH':'START待ち';
+ $('liveRanking').innerHTML=ranked.map((h,index)=>{
+  const style=frames[h.frame-1]||frames[0];
+  const gapMeters=leader?Math.max(0,(leader.progress-h.progress)*distance):0;
+  const gap= index===0?'先頭':(h.finishTime!==null&&leader&&leader.finishTime!==null)
+   ?`+${Math.max(0,h.finishTime-leader.finishTime).toFixed(1)}秒`
+   :`+${gapMeters.toFixed(0)}m`;
+  return `<li class="liveRankItem"><span class="rankIndex">${index+1}</span><span class="horseBib" style="--bib-bg:${rgbaColor(style.bg,.38)};--bib-fg:${style.fg};--bib-border:${rgbaColor(style.stroke,.9)}">${h.number}</span><span class="rankName" title="${escapeHTML(h.name)}">${escapeHTML(h.name)}</span><span class="rankGap">${gap}</span></li>`;
+ }).join('');
+}
+function draw(){
+ drawTrack();
+ horses.forEach(drawHorse);
+ 
+ const done=horses.length>0&&horses.every(h=>h.finishTime!==null);
+ ctx.fillStyle='rgba(8,20,26,.78)';ctx.fillRect(18,18,240,65);
+ ctx.fillStyle='#fff';ctx.font='bold 19px sans-serif';ctx.textAlign='left';ctx.fillText($('course').value+' '+$('surface').value+' '+$('distance').value+'m',32,44);
+ ctx.font='15px sans-serif';ctx.fillText(running?'レース進行中':done?'全馬ゴール':paused?'一時停止':'START待ち',32,68);
+}
+function progressAt(h,t){
+ let remain=t,dist=0;
+ for(let i=0;i<h.laps.length;i++){
+  if(remain>=h.laps[i]){remain-=h.laps[i];dist++}
+  else{return (dist+remain/h.laps[i])/h.laps.length}
+ }
+ return 1;
+}
+function updateRace(dt){
+ elapsed+=dt; // ラップ入力秒数と同じ実時間で進行
+ horses.forEach(h=>{
+  if(h.finishTime!==null)return;
+  h.progress=progressAt(h,elapsed);
+  if(h.progress>=1){h.progress=1;h.finishTime=h.total;finish.push(h)}
+ });
+ if(horses.length&&horses.every(h=>h.finishTime!==null)){
+  running=false;paused=false;$('status').textContent='全馬ゴール';$('raceInfo').textContent='全馬ゴールしました';elapsed=Math.max(...horses.map(h=>h.finishTime||0));showResults();updateDashboard();
+ }
+}
+function showResults(){
+ const sorted=[...horses].sort((a,b)=>a.total-b.total);
+ $('results').innerHTML=sorted.map((h,i)=>`<span class="chip">${i+1}着 ${h.number}番 ${escapeHTML(h.name)}（${(h.finishTime!==null?h.finishTime:h.total).toFixed(1)}秒）</span>`).join('');
+}
+let lastDashboardUpdate=0;
+function frame(ts){
+ if(running){const dt=Math.max(0,(ts-lastStamp)/1000);updateRace(dt);lastStamp=ts}
+ if(!$('raceScreen').hidden)draw();
+ if(ts-lastDashboardUpdate>=100){updateDashboard();lastDashboardUpdate=ts}
+ raf=requestAnimationFrame(frame);
+}
+function updateVariantControl(){
+ const data=courseData[$('course').value];
+ const select=$('courseVariant');
+ const hasVariants=!!(data.turfInner&&data.turfOuter);
+ select.disabled=!hasVariants||$('surface').value==='ダート';
+ select.title=select.disabled?'この条件は内外回りの切替対象外です':'内回り・外回りを指定できます';
+ if(select.disabled)select.value='auto';
+}
+function updateProfile(){
+ updateVariantControl();
+ const spec=getTrackSpec();
+ trackGeometry=makeTrackSamples(spec);
+ $('courseProfile').textContent=`${spec.course}：${courseNotes[spec.course]}\n形状：${spec.shape.detail||'競馬場別のコーナー形状'}／${spec.variant}・${spec.directionLabel}\n1周 ${spec.lap.toLocaleString('ja-JP')}m／直線 ${spec.straight.toLocaleString('ja-JP')}m。内外回りは「回り設定」で切替できます。`;
+ $('raceInfo').textContent=`${spec.course} ${spec.surface} ${spec.distance}m ／ ${spec.variant} ／ ${running?'レース進行中':paused?'一時停止':'START待ち'}`;
+}
+
+$('count').onchange=()=>{
+ running=false;paused=false;elapsed=0;finish=[];buildRows();horses=readHorses();
+ $('status').textContent='出走頭数を変更しました';$('results').innerHTML='';updateDashboard();draw();
+};
+$('distance').onchange=()=>{
+ running=false;paused=false;elapsed=0;finish=[];buildRows();horses=readHorses();
+ $('status').textContent='距離を変更しました';$('results').innerHTML='';updateProfile();updateDashboard();draw();
+};
+$('randomNames').onclick=()=>[...$('horseInputs').children].forEach((r,i)=>r.querySelector('.horseName').value=names[(i+Math.floor(Math.random()*names.length))%names.length]);
+$('randomLaps').onclick=()=>{
+ [...$('horseInputs').children].forEach((r,i)=>r.querySelector('.lapInput').value=randomLapsForHorse(i));
+ running=false;paused=false;elapsed=0;finish=[];horses=readHorses();
+ $('status').textContent='ランダムラップ生成済み';$('results').innerHTML='';
+ updateDashboard();draw();
+};
+$('update').onclick=()=>{running=false;paused=false;elapsed=0;finish=[];horses=readHorses();$('status').textContent='設定反映済み';$('results').innerHTML='';updateProfile();updateDashboard();draw()};
+$('course').onchange=()=>{running=false;paused=false;elapsed=0;finish=[];horses=readHorses();updateProfile();updateDashboard();draw()};
+$('surface').onchange=()=>{running=false;paused=false;elapsed=0;finish=[];horses=readHorses();updateProfile();updateDashboard();draw()};
+$('courseVariant').onchange=()=>{running=false;paused=false;elapsed=0;finish=[];horses=readHorses();updateProfile();updateDashboard();draw()};
+function showSettingsScreen(){
+ running=false;paused=false;
+ $('raceScreen').hidden=true;
+ $('settingsScreen').hidden=false;
+ $('status').textContent='設定中';
+ $('pause').textContent='⏸ 一時停止';
+ $('pause').disabled=false;
+}
+function showRaceScreen(){
+ $('settingsScreen').hidden=true;
+ $('raceScreen').hidden=false;
+ // hiddenだったCanvasが表示サイズを取得した次のフレームで描画解像度を合わせる。
+ requestAnimationFrame(()=>{fitRaceCanvas();draw();});
+}
+$('start').onclick=()=>{
+ // 設定画面の最新入力を読み込み、別画面へ切り替えてからレースを開始。
+ horses=readHorses();elapsed=0;
+ horses.forEach(h=>{h.progress=0;h.finishTime=null});
+ finish=[];running=false;paused=false;
+ $('results').innerHTML='';
+ updateProfile();updateDashboard();
+ showRaceScreen();
+ running=true;lastStamp=performance.now();$('status').textContent='レース中';
+ $('pause').textContent='⏸ 一時停止';
+ updateDashboard();
+};
+$('pause').onclick=()=>{
+ if(running){running=false;paused=true;$('status').textContent='一時停止';$('pause').textContent='▶ 再開';}
+ else if(paused){running=true;paused=false;lastStamp=performance.now();$('status').textContent='レース中';$('pause').textContent='⏸ 一時停止';}
+ updateDashboard();
+};
+$('reset').onclick=()=>{
+ // リセットは進行状態だけを初期化し、入力済みの設定は保持して設定画面へ戻る。
+ running=false;paused=false;elapsed=0;finish=[];horses=readHorses();
+ horses.forEach(h=>{h.progress=0;h.finishTime=null});
+ $('status').textContent='設定中';$('results').innerHTML='';
+ showSettingsScreen();updateProfile();updateDashboard();draw();
+};
+// コース表示領域の高さに合わせてCanvasの描画解像度を更新する。
+// PCの縦長レイアウトでもコース図が空白を残さず使えるようにする。
+function fitRaceCanvas(){
+ const stage=document.querySelector('.courseStage');
+ if(!stage)return;
+ const rect=stage.getBoundingClientRect();
+ // 画面切替前のdisplay:none状態では、Canvasサイズを変更しない。
+ if(rect.width<2||rect.height<2)return;
+ const width=Math.max(1,Math.round(rect.width));
+ const height=Math.max(1,Math.round(rect.height));
+ if(canvas.width!==width||canvas.height!==height){
+  canvas.width=width;
+  canvas.height=height;
+  trackGeometry=null;
+  draw();
+ }
+}
+if(typeof ResizeObserver!=='undefined'){
+ const courseResizeObserver=new ResizeObserver(fitRaceCanvas);
+ courseResizeObserver.observe(document.querySelector('.courseStage'));
+}else{
+ window.addEventListener('resize',fitRaceCanvas);
+}
+buildRows();horses=readHorses();updateProfile();updateDashboard();$('settingsScreen').hidden=false;$('raceScreen').hidden=true;$('status').textContent='設定中';draw();raf=requestAnimationFrame(frame);
+</script>
+</body>
+</html>
